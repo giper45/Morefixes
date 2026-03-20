@@ -1,0 +1,35 @@
+postgrescvedumper-2024-09-26.sql
+
+# Python cache and bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.sample
+
+# Test and coverage artifacts
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Build/distribution artifacts
+build/
+dist/
+*.egg-info/
+
+# Editor and OS files
+.DS_Store
+.idea/
+.vscode/
+
+# Runtime logs
+*.log

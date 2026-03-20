@@ -1,0 +1,98 @@
+:root {
+  --mf-bg: #f3f6fb;
+  --mf-panel: #ffffff;
+  --mf-ink: #1f2a37;
+  --mf-muted: #5b6677;
+  --mf-primary: #0d6efd;
+}
+
+body {
+  color: var(--mf-ink);
+  background:
+    radial-gradient(900px 450px at 0% -20%, rgba(13, 110, 253, 0.14), transparent 60%),
+    radial-gradient(900px 450px at 100% -20%, rgba(13, 202, 240, 0.14), transparent 60%),
+    var(--mf-bg);
+}
+
+.navbar {
+  box-shadow: 0 8px 20px rgba(16, 24, 40, 0.15);
+}
+
+.card {
+  border: 1px solid #e6ebf2;
+  border-radius: 14px;
+}
+
+.table td,
+.table th {
+  vertical-align: middle;
+}
+
+.filter-panel {
+  background: var(--mf-panel);
+  border: 1px solid #e6ebf2;
+  border-radius: 14px;
+  box-shadow: 0 8px 20px rgba(16, 24, 40, 0.05);
+}
+
+.filter-label {
+  display: block;
+  margin-bottom: 0.35rem;
+  color: var(--mf-muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.filter-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.sev-badge {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.sev-critical {
+  background-color: #dc3545;
+}
+
+.sev-high {
+  background-color: #fd7e14;
+}
+
+.sev-medium {
+  background-color: #ffc107;
+  color: #232529;
+}
+
+.sev-low {
+  background-color: #20c997;
+}
+
+.sev-none {
+  background-color: #6c757d;
+}
+
+.sev-unknown {
+  background-color: #adb5bd;
+  color: #202327;
+}
+
+.code-viewer {
+  max-height: 320px;
+  overflow: auto;
+  font-size: 0.82rem;
+  line-height: 1.35;
+  background: #0b1020;
+  color: #d7deef;
+  border-radius: 8px;
+  padding: 0.75rem;
+  margin: 0;
+}
+
+.accordion-button small {
+  font-weight: 500;
+}

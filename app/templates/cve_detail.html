@@ -1,0 +1,307 @@
+{% extends "base.html" %}
+{% block title %}{{ cve.cve_id }} | MoreFixes{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+  <a href="{{ url_for('web.cve_table') }}" class="btn btn-sm btn-outline-secondary">Back to CVEs</a>
+</div>
+
+<div class="card shadow-sm mb-3">
+  <div class="card-body">
+    {% set sev = (cve.severity or 'UNKNOWN')|upper %}
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+      <h2 class="h4 mb-0">{{ cve.cve_id }}</h2>
+      <div class="d-flex align-items-center gap-2">
+        <span class="badge sev-badge {% if sev == 'CRITICAL' %}sev-critical{% elif sev == 'HIGH' %}sev-high{% elif sev == 'MEDIUM' %}sev-medium{% elif sev == 'LOW' %}sev-low{% elif sev == 'NONE' %}sev-none{% else %}sev-unknown{% endif %}">{{ cve.severity or 'UNKNOWN' }}</span>
+        <span class="badge text-bg-dark">CVSS {{ cve.cvss3_base_score or 'N/A' }}</span>
+      </div>
+    </div>
+    <p class="text-break mb-4">{{ cve.description or 'No description available.' }}</p>
+
+    <div class="row g-3">
+      <div class="col-md-4">
+        <div class="border rounded p-3 h-100">
+          <h3 class="h6 text-uppercase text-muted">Impact</h3>
+          <p class="mb-1"><strong>Severity:</strong> {{ cve.severity or 'N/A' }}</p>
+          <p class="mb-1"><strong>CVSS v3 Score:</strong> {{ cve.cvss3_base_score or 'N/A' }}</p>
+          <p class="mb-1"><strong>Exploitability:</strong> {{ cve.exploitability_score or 'N/A' }}</p>
+          <p class="mb-0"><strong>Impact Score:</strong> {{ cve.impact_score or 'N/A' }}</p>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="border rounded p-3 h-100">
+          <h3 class="h6 text-uppercase text-muted">Attack</h3>
+          <p class="mb-1"><strong>Vector:</strong> {{ cve.attack_vector or 'N/A' }}</p>
+          <p class="mb-1"><strong>Complexity:</strong> {{ cve.attack_complexity or 'N/A' }}</p>
+          <p class="mb-1"><strong>Privileges Required:</strong> {{ cve.privileges_required or 'N/A' }}</p>
+          <p class="mb-0"><strong>User Interaction:</strong> {{ cve.user_interaction or 'N/A' }}</p>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="border rounded p-3 h-100">
+          <h3 class="h6 text-uppercase text-muted">Metadata</h3>
+          <p class="mb-1"><strong>Scope:</strong> {{ cve.scope or 'N/A' }}</p>
+          <p class="mb-1"><strong>Published:</strong> {{ cve.published_date or 'N/A' }}</p>
+          <p class="mb-1"><strong>Last Modified:</strong> {{ cve.last_modified_date or 'N/A' }}</p>
+          <p class="mb-0"><strong>Problem Types:</strong> {{ cve.problem_types|join(', ') if cve.problem_types else 'N/A' }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card shadow-sm mb-3">
+  <div class="card-body">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h3 class="h5 mb-0">Weakness (CWE Deep Dive)</h3>
+      <span class="text-muted small">{{ deep_dive.cwe_deep_dive|length }} entries</span>
+    </div>
+    <div class="row g-3">
+      {% for item in deep_dive.cwe_deep_dive %}
+        <div class="col-lg-6">
+          <div class="border rounded p-3 h-100">
+            <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
+              <strong>{{ item.cwe_id }} - {{ item.cwe_name or 'Unknown CWE' }}</strong>
+              <span class="badge {% if item.is_category %}text-bg-info{% else %}text-bg-secondary{% endif %}">
+                {% if item.is_category %}Category{% else %}Weakness{% endif %}
+              </span>
+            </div>
+            <p class="mb-2 text-break">{{ item.extended_description or item.description or 'No description available.' }}</p>
+            {% if item.url %}
+              <a class="btn btn-outline-primary btn-sm" href="{{ item.url }}" target="_blank" rel="noopener noreferrer">Official CWE Documentation</a>
+            {% endif %}
+          </div>
+        </div>
+      {% else %}
+        <div class="col-12 text-muted">No CWE deep dive available for this CVE in the current dataset.</div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<div class="card shadow-sm mb-3">
+  <div class="card-body">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h3 class="h5 mb-0">Fix Reliability</h3>
+      <span class="text-muted small">{{ deep_dive.fix_reliability|length }} candidate fixes</span>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-sm table-striped">
+        <thead>
+          <tr>
+            <th>Repository</th>
+            <th>Commit</th>
+            <th>Confidence Score</th>
+            <th>Relation Type</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for fix in deep_dive.fix_reliability %}
+            <tr>
+              <td class="text-break">{{ fix.repo_url or '-' }}</td>
+              <td>
+                {% if fix.commit_url %}
+                  <a href="{{ fix.commit_url }}" target="_blank" rel="noopener noreferrer">{{ fix.hash }}</a>
+                {% else %}
+                  {{ fix.hash or '-' }}
+                {% endif %}
+              </td>
+              <td>{{ fix.score if fix.score is not none else '-' }}</td>
+              <td>{{ fix.rel_type or '-' }}</td>
+              <td>{{ fix.extraction_status or '-' }}</td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="5" class="text-muted">No fix reliability records found for this CVE.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="card shadow-sm mb-3">
+  <div class="card-body">
+    <h3 class="h5 mb-3">Code Forensics</h3>
+    <div class="row g-3 mb-3">
+      <div class="col-md-3">
+        <div class="border rounded p-3 h-100">
+          <div class="text-muted small">Avg Complexity (Before)</div>
+          <div class="h5 mb-0">{{ deep_dive.code_forensics.metrics.avg_complexity_before if deep_dive.code_forensics.metrics.avg_complexity_before is not none else 'N/A' }}</div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="border rounded p-3 h-100">
+          <div class="text-muted small">Avg Complexity (After)</div>
+          <div class="h5 mb-0">{{ deep_dive.code_forensics.metrics.avg_complexity_after if deep_dive.code_forensics.metrics.avg_complexity_after is not none else 'N/A' }}</div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="border rounded p-3 h-100">
+          <div class="text-muted small">Complexity Delta</div>
+          {% set cdelta = deep_dive.code_forensics.metrics.complexity_delta %}
+          <div class="h5 mb-0 {% if cdelta is not none and cdelta > 0 %}text-danger{% elif cdelta is not none and cdelta < 0 %}text-success{% endif %}">{{ cdelta if cdelta is not none else 'N/A' }}</div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="border rounded p-3 h-100">
+          <div class="text-muted small">Token Delta</div>
+          {% set tdelta = deep_dive.code_forensics.metrics.token_delta %}
+          <div class="h5 mb-0 {% if tdelta is not none and tdelta > 0 %}text-danger{% elif tdelta is not none and tdelta < 0 %}text-success{% endif %}">{{ tdelta if tdelta is not none else 'N/A' }}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="accordion" id="forensicsAccordion">
+      {% for file in deep_dive.code_forensics.file_changes %}
+        <div class="accordion-item">
+          <h2 class="accordion-header" id="heading{{ loop.index }}">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ loop.index }}" aria-expanded="false" aria-controls="collapse{{ loop.index }}">
+              <span class="me-2">{{ file.filename or file.new_path or file.old_path or 'Unknown file' }}</span>
+              <span class="badge text-bg-light me-2">{{ file.change_type or 'change' }}</span>
+              <small class="text-muted">+{{ file.num_lines_added or 0 }} / -{{ file.num_lines_deleted or 0 }}</small>
+            </button>
+          </h2>
+          <div id="collapse{{ loop.index }}" class="accordion-collapse collapse" aria-labelledby="heading{{ loop.index }}" data-bs-parent="#forensicsAccordion">
+            <div class="accordion-body">
+              <div class="mb-2">
+                <strong>Impacted Methods</strong>
+                <ul class="mb-0">
+                  {% for method in file.methods %}
+                    <li>
+                      <strong>{{ method.name or 'anonymous' }}</strong>
+                      <span class="text-muted">{{ method.signature or '' }}</span>
+                      {% if method.parameters %}
+                        <div class="small text-muted">Params: {{ method.parameters }}</div>
+                      {% endif %}
+                    </li>
+                  {% else %}
+                    <li class="text-muted">No method-level details available.</li>
+                  {% endfor %}
+                </ul>
+              </div>
+
+              <ul class="nav nav-tabs" id="tabs{{ loop.index }}" role="tablist">
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#before{{ loop.index }}" type="button" role="tab">Before</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link" data-bs-toggle="tab" data-bs-target="#after{{ loop.index }}" type="button" role="tab">After</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link" data-bs-toggle="tab" data-bs-target="#diff{{ loop.index }}" type="button" role="tab">Diff</button>
+                </li>
+              </ul>
+              <div class="tab-content border border-top-0 p-2 bg-light-subtle">
+                <div class="tab-pane fade show active" id="before{{ loop.index }}" role="tabpanel">
+                  <pre class="code-viewer mb-0"><code>{{ file.code_before or 'No code_before available.' }}</code></pre>
+                </div>
+                <div class="tab-pane fade" id="after{{ loop.index }}" role="tabpanel">
+                  <pre class="code-viewer mb-0"><code>{{ file.code_after or 'No code_after available.' }}</code></pre>
+                </div>
+                <div class="tab-pane fade" id="diff{{ loop.index }}" role="tabpanel">
+                  <pre class="code-viewer mb-0"><code>{{ file.diff or 'No diff available.' }}</code></pre>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      {% else %}
+        <div class="text-muted">No file-level forensics are available for this CVE with the current fix linkage.</div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-lg-7">
+    <div class="card shadow-sm h-100">
+      <div class="card-body">
+        <h3 class="h5">Project Context</h3>
+        <div class="table-responsive">
+          <table class="table table-sm table-striped">
+            <thead>
+              <tr>
+                <th>Repository</th>
+                <th>Language</th>
+                <th>Stars</th>
+                <th>Forks</th>
+                <th>Last Push</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for repo in deep_dive.project_context.repositories %}
+                <tr>
+                  <td class="text-break"><a href="{{ repo.repo_url }}" target="_blank" rel="noopener noreferrer">{{ repo.repo_name or repo.repo_url }}</a></td>
+                  <td>{{ repo.repo_language or '-' }}</td>
+                  <td>{{ repo.stars_count }}</td>
+                  <td>{{ repo.forks_count }}</td>
+                  <td>{{ repo.date_last_push or '-' }}</td>
+                </tr>
+              {% else %}
+                <tr>
+                  <td colspan="5" class="text-muted">No repository metadata available.</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        {% if deep_dive.project_context.project_links %}
+          <h4 class="h6 mt-3">CVE-Project Links</h4>
+          <ul class="mb-0">
+            {% for link in deep_dive.project_context.project_links %}
+              <li>
+                <a href="{{ link.project_url }}" target="_blank" rel="noopener noreferrer">{{ link.project_url }}</a>
+                <span class="text-muted">({{ link.rel_type or 'unknown relation' }}, checked={{ link.checked }})</span>
+              </li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="card shadow-sm h-100">
+      <div class="card-body">
+        <h3 class="h5">Timeline and Commit Impact</h3>
+        <p class="mb-1"><strong>Total lines added:</strong> {{ deep_dive.commit_timeline.lines_added }}</p>
+        <p class="mb-3"><strong>Total lines deleted:</strong> {{ deep_dive.commit_timeline.lines_deleted }}</p>
+        <ul class="list-group list-group-flush">
+          {% for commit in deep_dive.commit_timeline.commits %}
+            <li class="list-group-item px-0">
+              <div><strong>{{ commit.author or 'Unknown author' }}</strong> on {{ commit.author_date or 'N/A' }}</div>
+              <div class="small text-muted">{{ commit.hash }} | +{{ commit.num_lines_added or 0 }} / -{{ commit.num_lines_deleted or 0 }}</div>
+              <div class="small text-break">{{ commit.msg or 'No commit message.' }}</div>
+            </li>
+          {% else %}
+            <li class="list-group-item px-0 text-muted">No commit timeline available for this CVE.</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card shadow-sm mb-3">
+  <div class="card-body">
+    <h3 class="h5">References</h3>
+    <ul class="list-group list-group-flush">
+      {% for reference in cve.references %}
+        <li class="list-group-item px-0">
+          <a href="{{ reference.url }}" target="_blank" rel="noopener noreferrer">{{ reference.name }}</a>
+          <div class="small text-muted text-break">{{ reference.url }}</div>
+          {% if reference.tags %}
+            <div class="small">{{ reference.tags|join(', ') }}</div>
+          {% endif %}
+        </li>
+      {% else %}
+        <li class="list-group-item px-0 text-muted">No references available.</li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+{% endblock %}

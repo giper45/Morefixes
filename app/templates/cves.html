@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}CVEs | MoreFixes{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h2 class="h4 mb-0">CVE Explorer</h2>
+  <div class="d-flex gap-2">
+    <a href="{{ url_for('web.cve_table', q=q, severity='CRITICAL') }}" class="btn btn-danger btn-sm">Only Critical</a>
+    <a href="{{ url_for('web.database_overview') }}" class="btn btn-outline-secondary btn-sm">Database Overview</a>
+  </div>
+</div>
+
+<form class="row g-3 mb-3 p-3 filter-panel" method="get" action="{{ url_for('web.cve_table') }}">
+  <div class="col-md-6">
+    <label class="filter-label" for="q">Search</label>
+    <input class="form-control" name="q" value="{{ q }}" placeholder="Search by CVE ID or description">
+  </div>
+  <div class="col-md-2">
+    <label class="filter-label" for="severity">Severity (multi-select)</label>
+    <select class="form-select" name="severity" multiple size="3" aria-label="Severity filter">
+      <option value="CRITICAL" {% if 'CRITICAL' in selected_severities %}selected{% endif %}>CRITICAL</option>
+      <option value="HIGH" {% if 'HIGH' in selected_severities %}selected{% endif %}>HIGH</option>
+      <option value="MEDIUM" {% if 'MEDIUM' in selected_severities %}selected{% endif %}>MEDIUM</option>
+      <option value="LOW" {% if 'LOW' in selected_severities %}selected{% endif %}>LOW</option>
+      <option value="NONE" {% if 'NONE' in selected_severities %}selected{% endif %}>NONE</option>
+    </select>
+  </div>
+  <div class="col-md-2">
+    <label class="filter-label" for="cwe">CWE (multi-select)</label>
+    <select class="form-select" name="cwe" multiple size="3" aria-label="CWE filter">
+      <option value="CWE-79" {% if 'CWE-79' in selected_cwes %}selected{% endif %}>CWE-79</option>
+      <option value="CWE-89" {% if 'CWE-89' in selected_cwes %}selected{% endif %}>CWE-89</option>
+      <option value="CWE-22" {% if 'CWE-22' in selected_cwes %}selected{% endif %}>CWE-22</option>
+      <option value="CWE-787" {% if 'CWE-787' in selected_cwes %}selected{% endif %}>CWE-787</option>
+    </select>
+  </div>
+  <div class="col-md-2 d-flex align-items-end">
+    <div class="filter-actions w-100">
+      <button class="btn btn-primary w-100" type="submit">Apply Filters</button>
+      <a class="btn btn-outline-secondary w-100" href="{{ url_for('web.cve_table') }}">Reset</a>
+    </div>
+  </div>
+  <div class="col-12">
+    <small class="text-muted">Tip: usa Ctrl/Cmd + click per selezionare piu valori.</small>
+  </div>
+</form>
+
+<p class="text-muted">Showing {{ rows|length }} results on page {{ pagination.page }} of {{ pagination.pages or 1 }}.</p>
+
+<div class="table-responsive">
+  <table class="table table-hover table-sm align-middle">
+    <thead>
+      <tr>
+        <th>CVE</th>
+        <th>Published</th>
+        <th>Severity</th>
+        <th>CVSS v3</th>
+        <th>CWE / Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for cve in rows %}
+        {% set sev = (cve.severity or 'UNKNOWN')|upper %}
+        <tr>
+          <td><a href="{{ url_for('web.cve_detail', cve_id=cve.cve_id) }}">{{ cve.cve_id }}</a></td>
+          <td>{{ cve.published_date[:10] if cve.published_date else '-' }}</td>
+          <td>
+            <span class="badge sev-badge {% if sev == 'CRITICAL' %}sev-critical{% elif sev == 'HIGH' %}sev-high{% elif sev == 'MEDIUM' %}sev-medium{% elif sev == 'LOW' %}sev-low{% elif sev == 'NONE' %}sev-none{% else %}sev-unknown{% endif %}">
+              {{ cve.severity or 'UNKNOWN' }}
+            </span>
+          </td>
+          <td>{{ cve.cvss3_base_score or '-' }}</td>
+          <td>{{ cve.problem_types|join(', ') if cve.problem_types else '-' }}</td>
+          <td class="text-break">{{ cve.description[:220] if cve.description else '-' }}</td>
+        </tr>
+      {% else %}
+        <tr>
+          <td colspan="6" class="text-muted">No CVEs found.</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="d-flex justify-content-between mt-3">
+  {% if pagination.has_prev %}
+    <a class="btn btn-outline-primary btn-sm" href="{{ prev_url }}">Previous</a>
+  {% else %}
+    <span></span>
+  {% endif %}
+
+  {% if pagination.has_next %}
+    <a class="btn btn-outline-primary btn-sm" href="{{ next_url }}">Next</a>
+  {% endif %}
+</div>
+{% endblock %}

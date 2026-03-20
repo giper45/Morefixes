@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Login | MoreFixes{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-5 col-lg-4">
+    <div class="card shadow-sm mt-5">
+      <div class="card-body p-4">
+        <h1 class="h4 mb-3">Frontend Login</h1>
+        <p class="text-muted mb-4">Use the application credentials configured in the environment.</p>
+        <form method="post" action="{{ url_for('web.login') }}">
+          <input type="hidden" name="next" value="{{ next }}">
+          <div class="mb-3">
+            <label for="username" class="form-label">Username</label>
+            <input id="username" name="username" class="form-control" required autofocus>
+          </div>
+          <div class="mb-4">
+            <label for="password" class="form-label">Password</label>
+            <input id="password" name="password" type="password" class="form-control" required>
+          </div>
+          <div class="d-grid">
+            <button type="submit" class="btn btn-primary">Login</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
