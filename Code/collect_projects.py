@@ -216,7 +216,7 @@ def populate_fixes_table():
             'rel_type': row['rel_type'],
             'score': 1337
         })
-    conn.commit()
+    session.commit()
     # df_git_cve_refs = df_git_cve_refs.drop(columns=[0])
     # df_git_cve_refs.dropna(inplace=True)
     # df_git_cve_refs.to_sql(name='cve_git', con=conn, if_exists='append', index=False)
@@ -234,7 +234,7 @@ def populate_fixes_table():
             'rel_type': row['rel_type'],
             'project_url': row['project_url']
         })
-    conn.commit()
+    session.commit()
 
 
 def get_github_repo_meta(repo_url: str, username: str, token):
@@ -305,7 +305,7 @@ def save_repo_meta(repo_url):
             """)
             # Execute the SQL statement using parameterized query
             new_conn.execute(insert_query, meta_dict)
-            new_conn.commit()
+            new_session.commit()
             return True
     except Exception as e:
         print("Inserting new repository resulted in error.")
@@ -424,7 +424,7 @@ def fetch_and_store_commits():
             for index, row in df_commit.iterrows():
                 if not db.table_exists('commits'):
                     df_commit.to_sql(name="commits", con=conn, if_exists="append", index=False)
-                    conn.commit()
+                    session.commit()
                 else:
                     sql = text('''
                         INSERT INTO commits (hash, repo_url, author, committer, msg, parents, author_timezone, num_lines_added, num_lines_deleted, dmm_unit_complexity, dmm_unit_interfacing, dmm_unit_size, merge, committer_timezone, author_date, committer_date)
@@ -450,7 +450,7 @@ def fetch_and_store_commits():
                         'author_date': row['author_date'],
                         'committer_date': row['committer_date'],
                     })
-                conn.commit()
+                session.commit()
 
             if df_file is not None:
                 df_file = df_file.apply(lambda x: x.astype(str))
@@ -483,13 +483,13 @@ def fetch_and_store_commits():
                             'token_count': row['token_count'],
                             'programming_language': row['programming_language'],
                         })
-                    conn.commit()
+                    session.commit()
 
             if df_method is not None:
                 df_method = df_method.apply(lambda x: x.astype(str))
                 df_method.to_sql(name="method_change", con=conn, if_exists="append", index=False)
                 cf.logger.debug(f'#Methods: {len(df_method)}')
-                conn.commit()
+                session.commit()
 
             hash_query = str(hashes)[1:-1]
             db.exec_query(f"UPDATE fixes SET extraction_status='COMPLETED' where hash in ({hash_query})")
@@ -500,7 +500,7 @@ def fetch_and_store_commits():
             # pass  # skip fetching repository if is not available.
         finally:
             remove_directory(repo_path)
-        conn.commit()
+        session.commit()
     cf.logger.debug('-' * 70)
 
     if db.table_exists('commits'):

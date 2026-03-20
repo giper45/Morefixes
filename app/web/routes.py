@@ -6,10 +6,12 @@ from urllib.parse import urlencode
 from app.auth import credentials_are_valid, web_login_required
 from app.extensions import db
 from app.models import CVE, Fix
-from app.services.categorization import infer_category
+from app.services.categorization import CATEGORY_RULES, infer_category
 from app.services.cve_deep_dive import build_cve_deep_dive
+from app.services.cve_fix_availability import get_cve_fix_availability, get_cve_ids_with_commit_changes
 from app.services.cve_presenter import present_cve
 from app.services.database_overview import get_database_summary, get_recent_cves, get_table_overview
+from app.services.fix_details import get_fix_detail
 from app.web import web_bp
 
 
@@ -72,29 +74,57 @@ def dashboard():
 @web_login_required
 def cve_table():
     q = request.args.get("q", "").strip()
+    selected_category = request.args.get("category", "").strip()
+    only_with_commit_changes = request.args.get("has_commit_changes") == "1"
     selected_severities = [value.strip().upper() for value in request.args.getlist("severity") if value.strip()]
     selected_cwes = [value.strip() for value in request.args.getlist("cwe") if value.strip()]
     page = max(int(request.args.get("page", 1)), 1)
     per_page = min(int(request.args.get("per_page", 50)), 100)
+    category_options = [*CATEGORY_RULES.keys(), "Other"]
 
     query = CVE.query
     if q:
         ilike_term = f"%{q}%"
         query = query.filter((CVE.cve_id.ilike(ilike_term)) | (CVE.description.ilike(ilike_term)))
+    if selected_category:
+        matching_cve_ids = {
+            cve_id
+            for cve_id, repo_url, description in (
+                db.session.query(Fix.cve_id, Fix.repo_url, CVE.description)
+                .outerjoin(CVE, CVE.cve_id == Fix.cve_id)
+                .distinct()
+                .all()
+            )
+            if infer_category(repo_url, description) == selected_category
+        }
+        query = query.filter(CVE.cve_id.in_(matching_cve_ids or ["__no_matching_category__"]))
     if selected_severities:
         query = query.filter(
             (func.upper(CVE.severity).in_(selected_severities)) | (func.upper(CVE.cvss3_base_severity).in_(selected_severities))
         )
     if selected_cwes:
         query = query.filter(or_(*[CVE.problemtype_json.ilike(f"%{cwe}%") for cwe in selected_cwes]))
+    if only_with_commit_changes:
+        matching_cve_ids = get_cve_ids_with_commit_changes()
+        query = query.filter(CVE.cve_id.in_(matching_cve_ids or ["__no_matching_commit_changes__"]))
 
     pagination = query.order_by(CVE.cve_id.desc()).paginate(page=page, per_page=per_page, error_out=False)
     rows = [present_cve(row) for row in pagination.items]
+    availability_by_cve = get_cve_fix_availability([row["cve_id"] for row in rows])
+    for row in rows:
+        row["fix_coverage"] = availability_by_cve.get(
+            row["cve_id"],
+            {"label": "No fixes", "badge": "text-bg-secondary", "fix_count": 0},
+        )
 
     def build_page_url(page_number: int) -> str:
         params = []
         if q:
             params.append(("q", q))
+        if selected_category:
+            params.append(("category", selected_category))
+        if only_with_commit_changes:
+            params.append(("has_commit_changes", "1"))
         for severity in selected_severities:
             params.append(("severity", severity))
         for cwe in selected_cwes:
@@ -110,6 +140,9 @@ def cve_table():
         pagination=pagination,
         rows=rows,
         q=q,
+        category_options=category_options,
+        selected_category=selected_category,
+        only_with_commit_changes=only_with_commit_changes,
         selected_severities=selected_severities,
         selected_cwes=selected_cwes,
         prev_url=prev_url,
@@ -141,6 +174,25 @@ def fixes_table():
 
     rows = query.order_by(Fix.cve_id.desc()).limit(limit).all()
     return render_template("fixes.html", rows=rows, q=q)
+
+
+@web_bp.get("/fix-detail")
+@web_login_required
+def fix_detail_page():
+    repo_url = request.args.get("repo_url", "").strip()
+    commit_hash = request.args.get("hash", "").strip()
+    cve_id = request.args.get("cve_id", "").strip() or None
+
+    if not repo_url or not commit_hash:
+        flash("Both repo_url and hash are required to open a fix detail.", "warning")
+        return redirect(url_for("web.fixes_table"))
+
+    detail = get_fix_detail(repo_url, commit_hash, cve_id=cve_id)
+    if detail is None:
+        flash("Fix detail not found.", "warning")
+        return redirect(url_for("web.fixes_table"))
+
+    return render_template("fix_detail.html", fix=detail)
 
 
 @web_bp.get("/cve/<string:cve_id>")

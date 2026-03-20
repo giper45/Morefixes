@@ -74,7 +74,7 @@ Add the GitHub security advisory database(https://github.com/github/advisory-dat
 Then, create a virtual Python environment(recommended) in the repo root directory, and install dependencies:
 `pip install -r requirements.txt`
 
-Please note that you need psycopg2 to connect to the database, and you may need to install `libpq-dev` on Linux or `postgresql` on your system before installing psycopg2. You can also use `psycopg2-binary` instead of `psycopg2` if you face issues with the installation.
+Note that you need psycopg2 to connect to the database, and you may need to install `libpq-dev` on Linux or `postgresql` on your system before installing psycopg2. You can also use `psycopg2-binary` instead of `psycopg2` if you face issues with the installation.
 
 For ubuntu: 
 ```

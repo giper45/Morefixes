@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}API Docs | MoreFixes{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h2 class="h4 mb-1">API Documentation</h2>
+    <p class="text-muted mb-0">Swagger UI for the current REST API. Protected endpoints use HTTP Basic authentication.</p>
+  </div>
+  <a class="btn btn-outline-secondary btn-sm" href="{{ spec_url }}">Raw OpenAPI JSON</a>
+</div>
+
+<div id="swagger-ui"></div>
+{% endblock %}
+
+{% block scripts %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui.css">
+<script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+<script>
+  window.addEventListener("load", function () {
+    window.ui = SwaggerUIBundle({
+      url: "{{ spec_url }}",
+      dom_id: "#swagger-ui",
+      deepLinking: true,
+      displayRequestDuration: true,
+      presets: [SwaggerUIBundle.presets.apis],
+    });
+  });
+</script>
+{% endblock %}

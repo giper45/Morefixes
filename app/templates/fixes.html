@@ -33,11 +33,12 @@
           <td><a href="{{ url_for('web.cve_detail', cve_id=fix.cve_id) }}">{{ fix.cve_id }}</a></td>
           <td class="text-break">{{ fix.repo_url or '-' }}</td>
           <td>
-            {% if fix.commit_url %}
-              <a href="{{ fix.commit_url }}" target="_blank" rel="noopener noreferrer">{{ fix.hash }}</a>
-            {% else %}
-              {{ fix.hash or '-' }}
-            {% endif %}
+            <div class="d-flex flex-column gap-1">
+              <a href="{{ url_for('web.fix_detail_page', repo_url=fix.repo_url, hash=fix.hash, cve_id=fix.cve_id) }}">{{ fix.hash or '-' }}</a>
+              {% if fix.commit_url %}
+                <a href="{{ fix.commit_url }}" target="_blank" rel="noopener noreferrer" class="small text-muted">Open on repository</a>
+              {% endif %}
+            </div>
           </td>
           <td>{{ fix.score if fix.score is not none else '-' }}</td>
           <td>{{ fix.extraction_status or '-' }}</td>

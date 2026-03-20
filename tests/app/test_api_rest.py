@@ -227,3 +227,157 @@ def test_cve_api_supports_multiselect_filters(client, auth_headers, app_instance
     assert "CVE-2026-0020" in ids
     assert "CVE-2026-0021" in ids
     assert "CVE-2026-0022" not in ids
+
+
+def test_openapi_spec_exposes_current_rest_api(client):
+    response = client.get("/api/openapi.json")
+
+    assert response.status_code == 200
+    body = response.get_json()
+    assert body["openapi"] == "3.0.3"
+    assert "/cve" in body["paths"]
+    assert "/fixes" in body["paths"]
+    assert body["components"]["securitySchemes"]["basicAuth"]["scheme"] == "basic"
+
+
+def test_swagger_ui_page_is_available(client):
+    response = client.get("/api/docs")
+
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    assert "SwaggerUIBundle" in html
+    assert "/api/openapi.json" in html
+
+
+def test_fix_detail_endpoints_expose_nested_commit_file_and_method_data(client, auth_headers, app_instance):
+    with app_instance.app_context():
+        db.session.add(CVE(cve_id="CVE-2026-3000", description="WordPress detail page"))
+        db.session.add(
+            Fix(
+                cve_id="CVE-2026-3000",
+                hash="abc123",
+                repo_url="https://github.com/WordPress/wordpress-develop",
+                rel_type="patch",
+                score=93,
+                extraction_status="COMPLETED",
+            )
+        )
+        db.session.commit()
+        db.session.execute(
+            db.text(
+                """
+                CREATE TABLE commits (
+                    hash TEXT,
+                    repo_url TEXT,
+                    parents TEXT,
+                    author TEXT,
+                    committer TEXT,
+                    msg TEXT,
+                    author_date TEXT,
+                    committer_date TEXT,
+                    num_lines_added INTEGER,
+                    num_lines_deleted INTEGER,
+                    dmm_unit_complexity TEXT,
+                    dmm_unit_interfacing TEXT,
+                    dmm_unit_size TEXT
+                )
+                """
+            )
+        )
+        db.session.execute(
+            db.text(
+                """
+                CREATE TABLE file_change (
+                    file_change_id INTEGER PRIMARY KEY,
+                    hash TEXT,
+                    filename TEXT,
+                    old_path TEXT,
+                    new_path TEXT,
+                    change_type TEXT,
+                    diff TEXT,
+                    num_lines_added INTEGER,
+                    num_lines_deleted INTEGER,
+                    code_before TEXT,
+                    code_after TEXT,
+                    programming_language TEXT,
+                    complexity TEXT,
+                    token_count TEXT,
+                    nloc INTEGER
+                )
+                """
+            )
+        )
+        db.session.execute(
+            db.text(
+                """
+                CREATE TABLE method_change (
+                    method_change_id INTEGER PRIMARY KEY,
+                    file_change_id INTEGER,
+                    name TEXT,
+                    signature TEXT,
+                    parameters TEXT,
+                    start_line INTEGER,
+                    end_line INTEGER,
+                    code TEXT,
+                    nloc INTEGER,
+                    complexity TEXT,
+                    token_count TEXT,
+                    top_nesting_level INTEGER,
+                    before_change TEXT
+                )
+                """
+            )
+        )
+        db.session.execute(
+            db.text(
+                """
+                INSERT INTO commits (hash, repo_url, parents, author, committer, msg, author_date, committer_date, num_lines_added, num_lines_deleted)
+                VALUES ('abc123', 'https://github.com/WordPress/wordpress-develop', '["prevhash"]', 'dev', 'dev', 'fix issue', '2026-03-20', '2026-03-20', 12, 5)
+                """
+            )
+        )
+        db.session.execute(
+            db.text(
+                """
+                INSERT INTO file_change (file_change_id, hash, filename, old_path, new_path, change_type, diff, num_lines_added, num_lines_deleted, code_before, code_after, programming_language)
+                VALUES (1, 'abc123', 'src/A.java', 'src/A.java', 'src/A.java', 'MODIFY', '@@ ...', 12, 5, 'old', 'new', 'Java')
+                """
+            )
+        )
+        db.session.execute(
+            db.text(
+                """
+                INSERT INTO method_change (method_change_id, file_change_id, name, signature, parameters, start_line, end_line, code, before_change)
+                VALUES (10, 1, 'doQuery', 'String doQuery(String x)', '["x"]', 40, 78, 'code', 'false')
+                """
+            )
+        )
+        db.session.commit()
+
+    cve_fixes_response = client.get("/api/cve/CVE-2026-3000/fixes", headers=auth_headers)
+    assert cve_fixes_response.status_code == 200
+    assert cve_fixes_response.get_json()[0]["hash"] == "abc123"
+
+    fix_detail_response = client.get(
+        "/api/fixes/https://github.com/WordPress/wordpress-develop/abc123?cve_id=CVE-2026-3000",
+        headers=auth_headers,
+    )
+    assert fix_detail_response.status_code == 200
+    detail_body = fix_detail_response.get_json()
+    assert detail_body["cve_id"] == "CVE-2026-3000"
+    assert detail_body["files_changed"][0]["filename"] == "src/A.java"
+    assert detail_body["files_changed"][0]["methods"][0]["name"] == "doQuery"
+
+    files_response = client.get(
+        "/api/fixes/https://github.com/WordPress/wordpress-develop/abc123/files?cve_id=CVE-2026-3000",
+        headers=auth_headers,
+    )
+    assert files_response.status_code == 200
+    assert files_response.get_json()["files_changed"][0]["file_change_id"] == 1
+
+    methods_response = client.get(
+        "/api/fixes/https://github.com/WordPress/wordpress-develop/abc123/files/1/methods?cve_id=CVE-2026-3000",
+        headers=auth_headers,
+    )
+    assert methods_response.status_code == 200
+    assert methods_response.get_json()["methods"][0]["signature"] == "String doQuery(String x)"

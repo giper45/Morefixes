@@ -17,6 +17,7 @@
             <a class="nav-link" href="{{ url_for('web.cve_table') }}">CVEs</a>
             <a class="nav-link" href="{{ url_for('web.fixes_table') }}">Fixes</a>
             <a class="nav-link" href="{{ url_for('web.database_overview') }}">Database</a>
+            <a class="nav-link" href="{{ url_for('api.swagger_ui') }}">API Docs</a>
           {% endif %}
         </div>
         {% if session.get('authenticated') %}

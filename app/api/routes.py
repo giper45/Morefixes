@@ -1,4 +1,4 @@
-from flask import jsonify, request
+from flask import jsonify, render_template, request, url_for
 from sqlalchemy import func
 from sqlalchemy import or_
 
@@ -9,6 +9,8 @@ from app.models import CVE, Fix
 from app.services.categorization import infer_category
 from app.services.cve_presenter import present_cve
 from app.services.database_overview import get_database_summary, get_recent_cves, get_table_overview
+from app.services.fix_details import get_cve_fix_summaries, get_file_methods, get_fix_detail, get_fix_files
+from app.services.openapi import build_openapi_spec
 
 
 def cve_to_dict(cve: CVE):
@@ -30,6 +32,16 @@ def fix_to_dict(fix: Fix):
 @api_bp.get("/health")
 def health():
     return jsonify({"status": "ok"})
+
+
+@api_bp.get("/openapi.json")
+def openapi_spec():
+    return jsonify(build_openapi_spec(spec_url=url_for("api.openapi_spec", _external=True)))
+
+
+@api_bp.get("/docs")
+def swagger_ui():
+    return render_template("swagger.html", spec_url=url_for("api.openapi_spec"))
 
 
 @api_bp.get("/database/summary")
@@ -122,6 +134,14 @@ def cve_detail(cve_id: str):
     return jsonify(cve_to_dict(row))
 
 
+@api_bp.get("/cve/<string:cve_id>/fixes")
+@auth_required
+def cve_fix_details(cve_id: str):
+    if CVE.query.get(cve_id) is None:
+        return jsonify({"error": "CVE not found"}), 404
+    return jsonify(get_cve_fix_summaries(cve_id))
+
+
 @api_bp.route("/fixes", methods=["GET", "POST", "DELETE"])
 @auth_required
 def fixes_collection():
@@ -195,3 +215,48 @@ def fixes_categories():
         {"category": category, "fixes": total}
         for category, total in sorted(buckets.items(), key=lambda x: x[1], reverse=True)
     ])
+
+
+@api_bp.get("/fixes/<path:repo_url>/<string:commit_hash>")
+@auth_required
+def fix_detail(repo_url: str, commit_hash: str):
+    detail = get_fix_detail(repo_url, commit_hash, cve_id=request.args.get("cve_id"))
+    if detail is None:
+        return jsonify({"error": "Fix not found"}), 404
+    return jsonify(detail)
+
+
+@api_bp.get("/fixes/<path:repo_url>/<string:commit_hash>/files")
+@auth_required
+def fix_files(repo_url: str, commit_hash: str):
+    detail = get_fix_detail(repo_url, commit_hash, cve_id=request.args.get("cve_id"))
+    if detail is None:
+        return jsonify({"error": "Fix not found"}), 404
+    return jsonify({
+        "cve_id": detail.get("cve_id"),
+        "repo_url": repo_url,
+        "hash": commit_hash,
+        "files_changed": get_fix_files(repo_url, commit_hash),
+    })
+
+
+@api_bp.get("/fixes/<path:repo_url>/<string:commit_hash>/files/<int:file_change_id>/methods")
+@auth_required
+def fix_file_methods(repo_url: str, commit_hash: str, file_change_id: int):
+    detail = get_fix_detail(repo_url, commit_hash, cve_id=request.args.get("cve_id"))
+    if detail is None:
+        return jsonify({"error": "Fix not found"}), 404
+
+    files = get_fix_files(repo_url, commit_hash)
+    file_row = next((row for row in files if row.get("file_change_id") == file_change_id), None)
+    if file_row is None:
+        return jsonify({"error": "File change not found"}), 404
+
+    return jsonify({
+        "cve_id": detail.get("cve_id"),
+        "repo_url": repo_url,
+        "hash": commit_hash,
+        "file_change_id": file_change_id,
+        "filename": file_row.get("filename"),
+        "methods": get_file_methods(file_change_id),
+    })

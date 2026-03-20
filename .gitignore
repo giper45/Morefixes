@@ -33,3 +33,6 @@ dist/
 
 # Runtime logs
 *.log
+
+*.sql
+.python-version

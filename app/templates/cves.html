@@ -11,9 +11,18 @@
 </div>
 
 <form class="row g-3 mb-3 p-3 filter-panel" method="get" action="{{ url_for('web.cve_table') }}">
-  <div class="col-md-6">
+  <div class="col-md-4">
     <label class="filter-label" for="q">Search</label>
     <input class="form-control" name="q" value="{{ q }}" placeholder="Search by CVE ID or description">
+  </div>
+  <div class="col-md-2">
+    <label class="filter-label" for="category">Category</label>
+    <select class="form-select" name="category" aria-label="Category filter">
+      <option value="">All categories</option>
+      {% for category in category_options %}
+        <option value="{{ category }}" {% if category == selected_category %}selected{% endif %}>{{ category }}</option>
+      {% endfor %}
+    </select>
   </div>
   <div class="col-md-2">
     <label class="filter-label" for="severity">Severity (multi-select)</label>
@@ -33,6 +42,14 @@
       <option value="CWE-22" {% if 'CWE-22' in selected_cwes %}selected{% endif %}>CWE-22</option>
       <option value="CWE-787" {% if 'CWE-787' in selected_cwes %}selected{% endif %}>CWE-787</option>
     </select>
+  </div>
+  <div class="col-md-2 d-flex align-items-end">
+    <div class="form-check mb-2">
+      <input class="form-check-input" type="checkbox" value="1" id="has_commit_changes" name="has_commit_changes" {% if only_with_commit_changes %}checked{% endif %}>
+      <label class="form-check-label" for="has_commit_changes">
+        Only with commit changes
+      </label>
+    </div>
   </div>
   <div class="col-md-2 d-flex align-items-end">
     <div class="filter-actions w-100">
@@ -55,6 +72,7 @@
         <th>Published</th>
         <th>Severity</th>
         <th>CVSS v3</th>
+        <th>Fix Coverage</th>
         <th>CWE / Type</th>
         <th>Description</th>
       </tr>
@@ -71,12 +89,20 @@
             </span>
           </td>
           <td>{{ cve.cvss3_base_score or '-' }}</td>
+          <td>
+            <div class="d-flex flex-column gap-1">
+              <span class="badge {{ cve.fix_coverage.badge }}">{{ cve.fix_coverage.label }}</span>
+              {% if cve.fix_coverage.fix_count %}
+                <span class="small text-muted">{{ cve.fix_coverage.fix_count }} fix{{ '' if cve.fix_coverage.fix_count == 1 else 'es' }}</span>
+              {% endif %}
+            </div>
+          </td>
           <td>{{ cve.problem_types|join(', ') if cve.problem_types else '-' }}</td>
           <td class="text-break">{{ cve.description[:220] if cve.description else '-' }}</td>
         </tr>
       {% else %}
         <tr>
-          <td colspan="6" class="text-muted">No CVEs found.</td>
+          <td colspan="7" class="text-muted">No CVEs found.</td>
         </tr>
       {% endfor %}
     </tbody>

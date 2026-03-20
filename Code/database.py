@@ -95,7 +95,7 @@ def exec_query(query):
         session1 = create_session()
         conn1 = session1.connection()
         conn1.execute(text(query))
-        conn1.commit()
+        session1.commit()
     finally:
         conn1.close()
         session1.close()
